@@ -6,6 +6,9 @@
 //! regenerated with `cargo xtask bake-goldens`; any change in output shows up as
 //! a diff in the committed hashes.
 
+// These cover every source format, so they need every source feature.
+#![cfg(all(feature = "etc1s", feature = "astc-ldr", feature = "hdr", feature = "pvrtc"))]
+
 #![cfg(not(target_arch = "wasm32"))]
 
 use basisu::{DecodeFlags, TargetFormat, Transcoder};

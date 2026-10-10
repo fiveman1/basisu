@@ -11,6 +11,9 @@
 //! decode is already gated byte-for-byte against the C++ oracle by the
 //! conformance suite, this transitively proves the global-codebook path.
 
+// These cover every source format, so they need every source feature.
+#![cfg(all(feature = "etc1s", feature = "astc-ldr", feature = "hdr", feature = "pvrtc"))]
+
 #![cfg(not(target_arch = "wasm32"))]
 
 use basisu::{DecodeFlags, TargetFormat, Transcoder, VideoState};

@@ -43,6 +43,24 @@ pub fn is_format_supported(target: TargetFormat, source: SourceFormat) -> bool {
     // LDR source of the matching block size (raw ASTC, or the XUASTC intermediate
     // that defers to the same rule).
     let non4x4_ldr_astc = is_astc_target(target) && !hdr_target && target != Astc4x4Rgba;
+    // sources and targets whose code is compiled out by a disabled feature
+    let source_enabled = match source {
+        SourceFormat::UastcLdr => true,
+        SourceFormat::Etc1s => cfg!(feature = "etc1s"),
+        SourceFormat::AstcLdr(_) | SourceFormat::XuastcLdr(_) => cfg!(feature = "astc-ldr"),
+        SourceFormat::UastcHdr4x4 | SourceFormat::AstcHdr6x6 | SourceFormat::UastcHdr6x6 => {
+            cfg!(feature = "hdr")
+        }
+    };
+    if !source_enabled {
+        return false;
+    }
+    if source == SourceFormat::UastcLdr
+        && !cfg!(feature = "pvrtc")
+        && matches!(target, Pvrtc1_4Rgb | Pvrtc1_4Rgba)
+    {
+        return false;
+    }
     match source {
         // XUASTC LDR reaches exactly the raw-ASTC LDR target set: the 15
         // LDR targets plus its own block size's ASTC pass-through. It defers to

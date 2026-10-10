@@ -350,9 +350,7 @@ impl<'a> Ktx2Transcoder<'a> {
                 let stream = self
                     .data
                     .get(lo + ofs as usize..lo + ofs as usize + len as usize)?;
-                crate::xuastc::transcode::transcode_xuastc(
-                    stream, b, bx, by, lw, lh, fmt, flags, out,
-                )
+                dispatch::transcode_xuastc(stream, b, bx, by, lw, lh, fmt, flags, out)
             }
             // The intermediate stream decompresses to raw ASTC HDR 6x6 blocks
             // first; the per-target paths are then the raw 6x6 ones.
@@ -366,13 +364,7 @@ impl<'a> Ktx2Transcoder<'a> {
                 let stream = self
                     .data
                     .get(lo + ofs as usize..lo + ofs as usize + len as usize)?;
-                let (blocks, dec_w, dec_h) = crate::uastc_hdr_6x6::decode_6x6_hdr(stream)?;
-                // The decoded dimensions must match the level's, or the stream
-                // is inconsistent with the container.
-                if dec_w != lw || dec_h != lh {
-                    return None;
-                }
-                dispatch::transcode_astc_hdr_6x6(&blocks, bx, by, lw, lh, fmt, flags, out)
+                dispatch::transcode_uastc_hdr_6x6_stream(stream, bx, by, lw, lh, fmt, flags, out)
             }
         }
     }

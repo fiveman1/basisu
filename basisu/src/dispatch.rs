@@ -69,6 +69,7 @@ fn mul_8(v: u32, q: u32) -> u32 {
 /// the mip level index whose previous-frame slots this image uses. `None` for
 /// an unsupported target.
 #[allow(clippy::too_many_arguments)]
+#[cfg(feature = "etc1s")]
 pub fn transcode_etc1s(
     t: &Etc1sTranscoder,
     rgb: &[u8],
@@ -166,6 +167,25 @@ pub fn transcode_etc1s(
     }
 }
 
+/// Stub when the `etc1s` feature is disabled: the source is unsupported.
+#[allow(clippy::too_many_arguments)]
+#[cfg(not(feature = "etc1s"))]
+pub fn transcode_etc1s(
+    _t: &Etc1sTranscoder,
+    _rgb: &[u8],
+    _alpha: Option<&[u8]>,
+    _bx: u32,
+    _by: u32,
+    _lw: u32,
+    _lh: u32,
+    _fmt: i32,
+    _flags: u32,
+    _video: Option<(&mut crate::basislz::etc1s::VideoState, u32)>,
+    _out: &mut [u8],
+) -> Option<()> {
+    None
+}
+
 /// Transcode one UASTC image to `fmt`, writing into `out` (sized per the
 /// target's own layout). `img` is the level's per-image raw UASTC block bytes
 /// (`bx*by*16`); `has_alpha` reports whether the source carries an alpha
@@ -189,9 +209,18 @@ pub fn transcode_uastc(
     // PVRTC1 is image-global: it can't go through the per-block loop. Build the
     // whole image at once (per-block bounding-box endpoints, then a whole-image
     // modulation pass). `None` for non-pow2 dimensions.
+    #[cfg(not(feature = "pvrtc"))]
+    {
+        let _ = has_alpha;
+        if matches!(fmt, target::PVRTC1_4_RGB | target::PVRTC1_4_RGBA) {
+            return None;
+        }
+    }
+    #[cfg(feature = "pvrtc")]
     if fmt == target::PVRTC1_4_RGB {
         return crate::pvrtc::transcode_uastc_pvrtc1_4_rgb(img, bx, by, out);
     }
+    #[cfg(feature = "pvrtc")]
     if fmt == target::PVRTC1_4_RGBA {
         // a source with no alpha channel is encoded as PVRTC1_4_RGB instead;
         // both variants produce the same block layout and output size
@@ -339,6 +368,7 @@ pub fn transcode_uastc(
 /// uncompressed targets use as the output row pitch and row count. The HDR
 /// path takes no decode flags. `None` for an unsupported target (only HDR
 /// targets are valid here), a short input, or a block the ASTC decode rejects.
+#[cfg(feature = "hdr")]
 pub fn transcode_uastc_hdr(
     img: &[u8],
     bx: u32,
@@ -358,10 +388,25 @@ pub fn transcode_uastc_hdr(
     }
 }
 
+/// Stub when the `hdr` feature is disabled: the source is unsupported.
+#[cfg(not(feature = "hdr"))]
+pub fn transcode_uastc_hdr(
+    _img: &[u8],
+    _bx: u32,
+    _by: u32,
+    _lw: u32,
+    _lh: u32,
+    _fmt: i32,
+    _out: &mut [u8],
+) -> Option<()> {
+    None
+}
+
 /// Verbatim ASTC block pass-through: the source already is standard ASTC of
 /// the destination's block size, so the image copies through unchanged
 /// (`bx * by * 16` bytes) into `out`. The payload is not validated; the
 /// target is what declares it ASTC.
+#[cfg(any(feature = "astc-ldr", feature = "hdr"))]
 fn astc_passthrough(img: &[u8], bx: u32, by: u32, out: &mut [u8]) -> Option<()> {
     let total = (bx * by) as usize * 16;
     let src = img.get(..total)?;
@@ -381,6 +426,7 @@ fn astc_passthrough(img: &[u8], bx: u32, by: u32, out: &mut [u8]) -> Option<()> 
 /// the decode flags), and the compressed re-encode targets (`has_alpha` takes
 /// effect there, via the alpha-to-opaque flag).
 #[allow(clippy::too_many_arguments)]
+#[cfg(feature = "astc-ldr")]
 pub fn transcode_astc_ldr(
     img: &[u8],
     block: crate::api::AstcBlock,
@@ -424,11 +470,31 @@ pub fn transcode_astc_ldr(
     )
 }
 
+/// Stub when the `astc-ldr` feature is disabled: the source is unsupported.
+#[allow(clippy::too_many_arguments)]
+#[cfg(not(feature = "astc-ldr"))]
+pub fn transcode_astc_ldr(
+    _img: &[u8],
+    _block: crate::api::AstcBlock,
+    _bx: u32,
+    _by: u32,
+    _lw: u32,
+    _lh: u32,
+    _fmt: i32,
+    _flags: u32,
+    _is_srgb: bool,
+    _has_alpha: bool,
+    _out: &mut [u8],
+) -> Option<()> {
+    None
+}
+
 /// Transcode one raw ASTC HDR 6x6 image to `fmt`, writing into `out`: the 6x6
 /// ASTC pass-through, BC6H (through the 12x12-tile re-encoder, where
 /// HIGH_QUALITY enables the encoder's 2-subset search), or the uncompressed
 /// half-float/9E5 rasters.
 #[allow(clippy::too_many_arguments)]
+#[cfg(feature = "hdr")]
 pub fn transcode_astc_hdr_6x6(
     img: &[u8],
     bx: u32,
@@ -452,5 +518,76 @@ pub fn transcode_astc_hdr_6x6(
         target::RGBA_HALF => hdr6x6::transcode_half(img, bx, by, lw, lh, 4, out),
         target::RGB_9E5 => hdr6x6::transcode_9e5(img, bx, by, lw, lh, out),
         _ => None,
+    }
+}
+
+/// Stub when the `hdr` feature is disabled: the source is unsupported.
+#[allow(clippy::too_many_arguments)]
+#[cfg(not(feature = "hdr"))]
+pub fn transcode_astc_hdr_6x6(
+    _img: &[u8],
+    _bx: u32,
+    _by: u32,
+    _lw: u32,
+    _lh: u32,
+    _fmt: i32,
+    _flags: u32,
+    _out: &mut [u8],
+) -> Option<()> {
+    None
+}
+
+/// Decode an XUASTC LDR stream and transcode it to `fmt`. `None` when the
+/// `astc-ldr` feature is disabled.
+#[allow(clippy::too_many_arguments)]
+pub fn transcode_xuastc(
+    stream: &[u8],
+    block: crate::api::AstcBlock,
+    bx: u32,
+    by: u32,
+    lw: u32,
+    lh: u32,
+    fmt: i32,
+    flags: u32,
+    out: &mut [u8],
+) -> Option<()> {
+    #[cfg(feature = "astc-ldr")]
+    return crate::xuastc::transcode::transcode_xuastc(
+        stream, block, bx, by, lw, lh, fmt, flags, out,
+    );
+    #[cfg(not(feature = "astc-ldr"))]
+    {
+        let _ = (stream, block, bx, by, lw, lh, fmt, flags, out);
+        None
+    }
+}
+
+/// Decompress a UASTC HDR 6x6 intermediate stream to raw ASTC HDR 6x6 blocks
+/// and transcode them to `fmt`. The decoded dimensions must match the level's
+/// `(lw, lh)`, or the stream is inconsistent with the container. `None` when
+/// the `hdr` feature is disabled.
+#[allow(clippy::too_many_arguments)]
+pub fn transcode_uastc_hdr_6x6_stream(
+    stream: &[u8],
+    bx: u32,
+    by: u32,
+    lw: u32,
+    lh: u32,
+    fmt: i32,
+    flags: u32,
+    out: &mut [u8],
+) -> Option<()> {
+    #[cfg(feature = "hdr")]
+    {
+        let (blocks, dec_w, dec_h) = crate::uastc_hdr_6x6::decode_6x6_hdr(stream)?;
+        if dec_w != lw || dec_h != lh {
+            return None;
+        }
+        transcode_astc_hdr_6x6(&blocks, bx, by, lw, lh, fmt, flags, out)
+    }
+    #[cfg(not(feature = "hdr"))]
+    {
+        let _ = (stream, bx, by, lw, lh, fmt, flags, out);
+        None
     }
 }

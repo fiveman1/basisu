@@ -21,7 +21,7 @@ name = "basisu"
 path = "src/lib.rs"
 
 [features]
-default = ["std", "zstd"]
+default = ["std", "zstd", "etc1s", "astc-ldr", "hdr", "pvrtc"]
 # Disabling `std` makes the crate `#![no_std]` (it still requires `alloc`).
 std = []
 # `ss=2` (Zstandard-supercompressed) KTX2 levels. Pure-Rust inflate; drop it for
@@ -31,9 +31,20 @@ zstd = ["dep:ruzstd", "std"]
 # Float sqrt/round for no_std builds (in std, not core). Enable for `no_std`:
 # `--no-default-features --features libm`.
 libm = ["dep:libm"]
-# The crate does not split target-format families (bc / astc / etc / pvrtc /
-# ...) behind separate features; every convert module and dispatch arm is
-# always compiled in.
+# Source formats beyond UASTC LDR, which is always supported. Each one's
+# conversion code (and, for ETC1S, its large lookup tables) is only reachable
+# through its feature, so disabling it lets the linker drop that code. With a
+# source disabled, `Transcoder::supports` reports false for it and transcoding
+# it fails with `Error::Unsupported`. Build just UASTC LDR with
+# `default-features = false, features = ["std", "zstd"]`.
+# ETC1S (BasisLZ) sources.
+etc1s = []
+# Raw ASTC LDR and XUASTC LDR sources.
+astc-ldr = []
+# UASTC HDR 4x4, UASTC HDR 6x6 and raw ASTC HDR 6x6 sources.
+hdr = []
+# PVRTC1 targets from UASTC LDR. (ETC1S reaches PVRTC through `etc1s`.)
+pvrtc = []
 
 [dependencies]
 ruzstd = { version = "0.7", optional = true, default-features = false }

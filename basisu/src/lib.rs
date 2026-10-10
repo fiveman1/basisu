@@ -19,6 +19,12 @@
 //! `alloc`); the `zstd` feature implies `std`.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+// Disabling a source feature leaves its crate-internal helpers unreachable;
+// the linker drops them, which is the point of the features.
+#![cfg_attr(
+    not(all(feature = "etc1s", feature = "astc-ldr", feature = "hdr", feature = "pvrtc")),
+    allow(dead_code)
+)]
 
 #[macro_use]
 extern crate alloc;

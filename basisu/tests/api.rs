@@ -4,6 +4,9 @@
 //! golden test's job; this covers the consumer-facing surface and failure
 //! modes.
 
+// These cover every source format, so they need every source feature.
+#![cfg(all(feature = "etc1s", feature = "astc-ldr", feature = "hdr", feature = "pvrtc"))]
+
 #![cfg(not(target_arch = "wasm32"))]
 
 use basisu::{DecodeFlags, Error, SourceFormat, TargetFormat, Transcoder};
